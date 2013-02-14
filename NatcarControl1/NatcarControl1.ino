@@ -1,26 +1,24 @@
                                                                                  
 // UCLA NATCAR PROJECT - TEAM DIZHEL ///// ------> VERSION 0.1
-
 // Version Update Information
 // 0.1 Set pins, initialize paramaters, line cam acquisition 2/17/13
-
 
 
 
 // Line Camera
 #define AOpin A0  // Collect data from Linecam
 #define CLKpin 2  // Ctrl Linecam CLOCK
-#define SIpin 3   // Ctrl Linecam
+#define SIpin 4   // Ctrl Linecam
 
 #define NPIXELS 128
 
 // Motor Controller 
-#define MOTORpin 5  // output PWN to ctrl speed
-#define STOPpin 6    // output to ctrl fast stop switch
+#define MOTORpin 6  // output PWN to ctrl speed
+#define STOPpin 7    // output to ctrl fast stop switch
 
 // Servo
 #include <Servo.h> 
-#define SERVOpin 8   //output to control servo 
+#define SERVOpin 9   //output to control servo 
 Servo natServo;
 
 const int straight = 71;
@@ -43,16 +41,19 @@ void setup (void)
        pinMode (STOPpin, OUTPUT);
     
        natServo.attach(SERVOpin);  // attaches the servo pin to the servo object, basically pinMode
-   
+       natServo.write(71);
    //Initialize Camera Paramters
        digitalWrite (SIpin, LOW);
        digitalWrite (CLKpin, HIGH);
 
-       Serial.begin (115200);  
+       Serial.begin (115200); 
 }
 
+
+      
 int i;
 int maxi = 0;
+int maxpx = 0;
 int motorPWM = 0;
 int motorSpeed = 0;
 int turnLeft = 71;
@@ -61,8 +62,7 @@ int turnRight = 71;
 
 void loop (void)
 {
-   maxi = 0;
-   
+   maxpx = 0;
    ///// ACQUIRE DATA FROM LINECAM ////////////////////////////////////////
            // SI pulse to capture the image
            digitalWrite (CLKpin, LOW);
@@ -81,21 +81,30 @@ void loop (void)
              {
                  maxi = i;
              }
+             
              digitalWrite (CLKpin, HIGH);
            }
            
            delayMicroseconds (1);
-             
+           
+             Serial.write ((byte)0);
+             for (i = 0; i < NPIXELS; i++) {
+               if (Pixel[i] == 0)
+                 Serial.write ((byte)1);
+               else
+                 Serial.write ((byte)Pixel[i]);
+             }
+          
     ///// CONTROL STEERING //////////////////////////////////////////   
            if (maxi < 61)
            {
-                 turnLeft = map(maxi, 0, 59, 44, 70);
-                 natServo.write(turnLeft);
+                 //turnLeft = map(maxi, 0, 59, 44, 70);
+                 natServo.write(hardLeft);
            }
            else if (maxi > 67)  
            {
-                 turnRight = map(maxi, 68, 127, 72, 98); 
-                 natServo.write(turnRight);
+                 //turnRight = map(maxi, 68, 127, 72, 98); 
+                 natServo.write(hardRight);
            }
            else
            {
@@ -103,7 +112,7 @@ void loop (void)
            }
           
     ///// CONTROL MOTOR SPEED/////////////////////////////////////////
-           motorPWM = 10;
+           motorPWM = 3;
            motorSpeed = map(motorPWM, 0, 100, 0, 255);
            
            analogWrite(MOTORpin, motorSpeed);

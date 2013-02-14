@@ -6,6 +6,8 @@ PImage img;
 Serial duino;
 boolean Synced = false;
 
+// test comment
+
 void setup ()
 {
    println ("<START>");

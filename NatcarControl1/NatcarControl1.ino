@@ -1,8 +1,8 @@
                                                                                  
-// UCLA NATCAR PROJECT - TEAM DIZHEL ///// ------> VERSION 0.1
+// UCLA NATCAR PROJECT - TEAM DIZHEL ///// ------> VERSION 0.2
 // Version Update Information
 // 0.1 Set pins, initialize paramaters, line cam acquisition 2/17/13
-
+// 0.2 implement new camera data acquisition algorithm
 
 
 // Line Camera
@@ -52,58 +52,60 @@ void setup (void)
 
       
 int i;
+byte ch;
+byte maxpx;
 int maxi = 0;
-int maxpx = 0;
 int motorPWM = 0;
 int motorSpeed = 0;
 int turnLeft = 71;
 int turnRight = 71;
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void loop (void)
 {
-   maxpx = 0;
-   ///// ACQUIRE DATA FROM LINECAM ////////////////////////////////////////
-           // SI pulse to capture the image
+         maxpx = 0;
+        // SI pulse to capture the image
+         digitalWrite (CLKpin, LOW);
+         delayMicroseconds (1);
+         digitalWrite (SIpin, HIGH);
+         digitalWrite (CLKpin, HIGH);
+         digitalWrite (SIpin, LOW);
+      
+         // pulse CLK and acquire image into Arduino
+         for (i = 0; i < NPIXELS; i++) {
+           Pixel[i] = analogRead (AOpin) / 4;// analogRead 0 - 1053 && Pixel is byte type 0 - 255
            digitalWrite (CLKpin, LOW);
            delayMicroseconds (1);
-           digitalWrite (SIpin, HIGH);    
            digitalWrite (CLKpin, HIGH);
-           digitalWrite (SIpin, LOW);
-         
-           // pulse CLK and acquire image into Arduino && Look for CENTER pixel
-           for (i = 0; i < NPIXELS; i++) {
-             Pixel[i] = analogRead (AOpin) / 4;  // analogRead 0 - 1053 && Pixel is byte type 0 - 255
-             digitalWrite (CLKpin, LOW);        
-             delayMicroseconds (1);
+         }
+      
+         delayMicroseconds (1);
+      
+         for (i = 0; i < NPIXELS; i++) 
+         {
+             ch = Pixel[i];
+             if (ch < 0)
+               ch += 256;
              
-             if (Pixel[i] > maxpx) 
-             {
-                 maxi = i;
+             if (ch > maxpx) {   // Look for brightest pixel
+               maxi = i;
+               maxpx = Pixel[i];
              }
-             
-             digitalWrite (CLKpin, HIGH);
-           }
-           
-           delayMicroseconds (1);
-           
-             Serial.write ((byte)0);
-             for (i = 0; i < NPIXELS; i++) {
-               if (Pixel[i] == 0)
-                 Serial.write ((byte)1);
-               else
-                 Serial.write ((byte)Pixel[i]);
-             }
+         }
+       
           
     ///// CONTROL STEERING //////////////////////////////////////////   
-           if (maxi < 61)
+           if (maxi > 67)
            {
-                 //turnLeft = map(maxi, 0, 59, 44, 70);
-                 natServo.write(hardLeft);
+                 turnLeft = map(maxi, 0, 59, 44, 70);
+                 natServo.write(turnLeft);
+                 //natServo.write(hardLeft);
            }
-           else if (maxi > 67)  
+           else if (maxi < 61)  
            {
-                 //turnRight = map(maxi, 68, 127, 72, 98); 
+                 turnRight = map(maxi, 68, 127, 72, 98); 
+                 natServo.write(turnRight);
                  natServo.write(hardRight);
            }
            else
@@ -112,7 +114,7 @@ void loop (void)
            }
           
     ///// CONTROL MOTOR SPEED/////////////////////////////////////////
-           motorPWM = 3;
+           motorPWM = 12;
            motorSpeed = map(motorPWM, 0, 100, 0, 255);
            
            analogWrite(MOTORpin, motorSpeed);

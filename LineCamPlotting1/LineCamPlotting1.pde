@@ -46,17 +46,18 @@ void draw ()
 
    // Synchronise
    if (Synced) {
-     nbufs = duino.available () / (LINELEN + 1);
+       nbufs = duino.available () / (LINELEN + 1);  //check if 
    }
    else {
-     do {
-       while (duino.available () == 0)
-        ;
-       ch = duino.read ();
-
-     } while (ch != 0);
-     nbufs = 0;
-     Synced = true;
+           do {
+               while (duino.available () == 0)
+               ; 
+               ch = duino.read ();
+      
+           } while (ch != 0);
+           
+           nbufs = 0;
+           Synced = true;
    }
 
 

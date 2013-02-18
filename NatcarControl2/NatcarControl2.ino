@@ -53,12 +53,27 @@ void setup (void)
 }
 
 int i;
+int leftPoint;
+int rightPoint;
+int midPoint;
+
 byte ch;
+byte pixVal; 
 byte maxpx;
 int maxi = 0;
 int motorPWM = 0;
 int motorSpeed = 0;
 int turnAngle = 71;
+
+byte black=0;
+byte white=1;
+
+int onLine=0;
+
+byte MinValueActual;
+byte MaxValueActual;
+
+
 
 int debug[memorySize];
 
@@ -83,9 +98,11 @@ void loop (void)
             delayMicroseconds (1);
             digitalWrite (CLKpin, HIGH);
           }
-//          delayMicroseconds (1);
+//        delayMicroseconds (1);
         
           // find the position of the brightest pixel    ---- should change to better algorithm!!
+    
+    /*      
           for (i = 0; i < NPIXELS; i++) 
           {
             ch = Pixel[i];
@@ -96,6 +113,64 @@ void loop (void)
               maxpx = ch;
             }
           }          
+      */
+      
+          
+//                 --------------Threshold Algorithm----------- v0.1       
+             
+      MinValueActual = Pixel[0], MaxValueActual = Pixel[0]; //set max & min to some value              
+        
+      // Find the range of pixel values we are working with in the image
+      
+  /*
+       for (i = 0; i < NPIXELS; i++) 
+       {
+         pixVal=Pixel[i];
+         
+         if (pixVal < 0)     // takes care of any random negative values, if they somehow popup
+         pixVal += 256;              
+       
+         if(pixVal > MaxValueActual) { MaxValueActual = pixVal; } //find max
+         if(pixVal < MinValueActual) { MinValueActual = pixVal; } //find min
+       }     
+    
+   */
+   
+       // Determine which pixels are black and which are white.
+      
+      byte Threshold = 130;
+      
+      for (i = 0; i < NPIXELS; i++)      
+      { 
+        pixVal=Pixel[i];
+        
+        if (pixVal < Threshold)
+        Pixel[i]= black;        
+        else
+        Pixel[i] = white;  
+                        
+      }     
+       
+       //Finds the Average of the Signal to determine where the line is. 
+       
+     for (i = 0; i < NPIXELS; i++)      
+      { 
+        pixVal=Pixel[i];  
+       
+         if ((pixVal==white) && (onLine==0))
+         {
+           leftPoint=i;
+           onLine=1;
+         }
+       
+         if ((pixVal==black)&& (onLine==1))
+         {
+           rightPoint=i;
+           onLine=0;             
+        }
+      }  
+      
+      midPoint= ((rightPoint+leftPoint)/2);
          
           Serial.write ((byte)0);  // cast 0 to byte type variable, use as STARTING PT 
          for (i = 0; i < NPIXELS; i++) {
@@ -105,45 +180,34 @@ void loop (void)
              Serial.write ((byte)Pixel[i]);  // writes bytes to serial port
          } 
 
-//          if(  abs(maxi - history[memorySize-1]) < 15)    // try to account for sharp turns
-//          {                                               // ignore new brightest if change is too large
-//                
-//                // debug
-//                for(i = 0; i < memorySize; i++){
-//                    debug[i] = int(history[i]);
-//                    Serial.print(debug[i]);
-//                    Serial.print("\t"); 
-//                }
-//                Serial.println("");
-//                
-//                for(i = 1; i < memorySize; i++){
-//                history[i - 1] = history[i];
-//            }
-//            history[memorySize - 1] = maxi;
-//          }
-//          else
-//            maxi = history[memorySize - 1];
-   
-      
-      
-      
+    
       
           
     ///// CONTROL STEERING ////////////////////////////////////////// 
-          if (maxi < 61) {
-              turnAngle = map(maxi, 0, 60, 44, 70);
+    
+   
+    //Algorithm: Car ONLY turns with respect to brighest pixel
+    
+          if (midPoint < 61) {
+              turnAngle = map(maxi, 0, 60, 44, 70); //Car turns left 
               natServo.write(turnAngle);
           }
-          else if (maxi > 67) {
+          else if (midPoint > 67) {    //Car turns right 
               turnAngle = map(maxi, 68, 127, 72, 98);
               natServo.write(turnAngle);
           }
           else {
-              natServo.write(straight);
+              natServo.write(straight); //Straight if between threshold of 61 - 67 
           }
 
+
+
     ///// CONTROL MOTOR SPEED/////////////////////////////////////////
-              motorPWM = 12;
+    
+    //Algorithm: Car Speed is CONSTANT
+    
+    
+              motorPWM = 12; //Duty Cycle Percentage 
               motorSpeed = map(motorPWM, 0, 100, 0, 255);
               analogWrite(MOTORpin, motorSpeed);
  

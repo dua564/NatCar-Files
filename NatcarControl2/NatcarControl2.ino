@@ -74,7 +74,6 @@ byte MinValueActual;
 byte MaxValueActual;
 
 
-
 int debug[memorySize];
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -113,12 +112,11 @@ void loop (void)
               maxpx = ch;
             }
           }          
-      */
-      
+      */   
           
 //                 --------------Threshold Algorithm----------- v0.1       
              
-      MinValueActual = Pixel[0], MaxValueActual = Pixel[0]; //set max & min to some value              
+//      MinValueActual = Pixel[0], MaxValueActual = Pixel[0]; //set max & min to some value              
         
       // Find the range of pixel values we are working with in the image
       
@@ -137,55 +135,55 @@ void loop (void)
    */
    
        // Determine which pixels are black and which are white.
-      
       byte Threshold = 130;
-      
       for (i = 0; i < NPIXELS; i++)      
       { 
         pixVal=Pixel[i];
-        
         if (pixVal < Threshold)
-        Pixel[i]= black;        
+          Pixel[i]= black;        
         else
-        Pixel[i] = white;  
-                        
+          Pixel[i] = white;  
       }     
        
        //Finds the Average of the Signal to determine where the line is. 
        
-     for (i = 0; i < NPIXELS; i++)      
-      { 
+     for (i = 0; i < NPIXELS; i++){ 
         pixVal=Pixel[i];  
-       
-         if ((pixVal==white) && (onLine==0))
-         {
+         if ((pixVal==white) && (onLine==0)) {
            leftPoint=i;
            onLine=1;
          }
-       
-         if ((pixVal==black)&& (onLine==1))
-         {
+         if ((pixVal==black)&& (onLine==1)) {
            rightPoint=i;
            onLine=0;             
         }
       }  
-      
       midPoint= ((rightPoint+leftPoint)/2);
-         
-          Serial.write ((byte)0);  // cast 0 to byte type variable, use as STARTING PT 
-         for (i = 0; i < NPIXELS; i++) {
-           if (Pixel[i] == 0)
-             Serial.write ((byte)1);  // change 0s to 1s so not confused w/ STARTING PT
-           else
-             Serial.write ((byte)Pixel[i]);  // writes bytes to serial port
-         } 
+      
+      // FIR Filter ///////////////////////////////
+      // -- account for sudden turns in track
+      // -- 5th order filter
+      midPoint = (midPoint + history[memorySize-1] + history[memorySize-2] + history[memorySize-3]
+                   + history[memorySize-4] + history[memorySize-5]) / 6;
+      
+      for(i = 1; i < memorySize; i++) {
+              history[i - 1] = history[i];
+      }
+      
+      history[memorySize - 1] = midPoint;
+        
+//          Serial.write ((byte)0);  // cast 0 to byte type variable, use as STARTING PT 
+//         for (i = 0; i < NPIXELS; i++) {
+//           if (Pixel[i] == 0)
+//             Serial.write ((byte)1);  // change 0s to 1s so not confused w/ STARTING PT
+//           else
+//             Serial.write ((byte)Pixel[i]);  // writes bytes to serial port
+//         } 
 
     
       
           
     ///// CONTROL STEERING ////////////////////////////////////////// 
-    
-   
     //Algorithm: Car ONLY turns with respect to brighest pixel
     
           if (midPoint < 61) {
@@ -203,9 +201,7 @@ void loop (void)
 
 
     ///// CONTROL MOTOR SPEED/////////////////////////////////////////
-    
-    //Algorithm: Car Speed is CONSTANT
-    
+    //Algorithm: Car Speed is CONSTANT  
     
               motorPWM = 12; //Duty Cycle Percentage 
               motorSpeed = map(motorPWM, 0, 100, 0, 255);

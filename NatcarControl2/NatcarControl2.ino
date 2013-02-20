@@ -3,7 +3,6 @@
 // 0.1 Set pins, initialize paramaters, line cam acquisition 2/7/13
 // 0.2 implement new camera data acquisition algorithm, brightest pixel 2/15/13
 
-
 // Line Camera
 #define AOpin A0  // Collect data from Linecam
 #define CLKpin 2  // Ctrl Linecam CLOCK
@@ -19,11 +18,15 @@
 Servo natServo;
 
 ////////////////////////////////////////////////////////////////////////
-const int NPIXELS = 128;  
+const int NPIXELS = 128;
+const int memorySize = 5;
+
+const byte BLACK=0;
+const byte WHITE=1;
+
 const int straight = 71;
 const int hardLeft = 98;
 const int hardRight = 44;
-const int memorySize = 5;
 // turn range 44 - 98 (right to left)
 // straight 71
 
@@ -57,7 +60,6 @@ int leftPoint;
 int rightPoint;
 int midPoint;
 
-byte ch;
 byte pixVal; 
 byte maxpx;
 int maxi = 0;
@@ -65,22 +67,14 @@ int motorPWM = 0;
 int motorSpeed = 0;
 int turnAngle = 71;
 
-byte black=0;
-byte white=1;
-
-int onLine=0;
-
-byte MinValueActual;
-byte MaxValueActual;
-
-
-int debug[memorySize];
-
+int onLine = 0;
+byte MinValueActual = 255;
+byte MaxValueActual = 0;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void loop (void)
 {
-    ///// LINESCAN CAM DATA ACQUISITION //////////////////////////////////////////   
+/////////-------- LINESCAN CAM DATA ACQUISITION --------////////////////////////////////////   
           maxpx = (byte)0;  // reset maxpx to 0 every time
           
           // pulse SI to capture the image
@@ -97,24 +91,17 @@ void loop (void)
             delayMicroseconds (1);
             digitalWrite (CLKpin, HIGH);
           }
-//        delayMicroseconds (1);
-        
-          // find the position of the brightest pixel    ---- should change to better algorithm!!
+        delayMicroseconds (1);
     
-    /*      
-          for (i = 0; i < NPIXELS; i++) 
-          {
-            ch = Pixel[i];
-            if (ch < 0)     // takes care of any random negative values, if they somehow popup
-              ch += 256;
-            if (ch > maxpx) {   // Look for brightest pixel
-              maxi = i;
-              maxpx = ch;
-            }
-          }          
-      */   
-          
-//                 --------------Threshold Algorithm----------- v0.1       
+   Serial.write ((byte)0);  // cast 0 to byte type variable, use as STARTING PT 
+   for (i = 0; i < NPIXELS; i++) {
+     if (Pixel[i] == 0)
+       Serial.write ((byte)1);  // change 0s to 1s so not confused w/ STARTING PT
+     else
+       Serial.write ((byte)Pixel[i]);  // writes bytes to serial port
+   }
+        
+/////////////////////--------------Threshold Algorithm----------- v0.1       
              
 //      MinValueActual = Pixel[0], MaxValueActual = Pixel[0]; //set max & min to some value              
         
@@ -130,68 +117,50 @@ void loop (void)
        
          if(pixVal > MaxValueActual) { MaxValueActual = pixVal; } //find max
          if(pixVal < MinValueActual) { MinValueActual = pixVal; } //find min
-       }     
-    
+       }
+       
+       Serial.print("Max=");
+       Serial.print(     MaxValueActual  );
+       Serial.print("\t");
+       Serial.print("Min=");
+       Serial.print(     MinValueActual  );
+       Serial.println("");
    */
    
-       // Determine which pixels are black and which are white.
+       // Determine which pixels are BLACK and which are WHITE.
       byte Threshold = 130;
-      for (i = 0; i < NPIXELS; i++)      
-      { 
+      for (i = 0; i < NPIXELS; i++) { 
         pixVal=Pixel[i];
         if (pixVal < Threshold)
-          Pixel[i]= black;        
+          Pixel[i]= BLACK;        
         else
-          Pixel[i] = white;  
+          Pixel[i] = WHITE;  
       }     
        
-       //Finds the Average of the Signal to determine where the line is. 
-       
+     //Finds the Average of the Signal to determine where the line is.    //issue!!! prob if not just one square wave 
      for (i = 0; i < NPIXELS; i++){ 
         pixVal=Pixel[i];  
-         if ((pixVal==white) && (onLine==0)) {
+         if ((pixVal==WHITE) && (onLine==0)) {
            leftPoint=i;
            onLine=1;
          }
-         if ((pixVal==black)&& (onLine==1)) {
+         if ((pixVal==BLACK)&& (onLine==1)) {
            rightPoint=i;
            onLine=0;             
         }
       }  
-      midPoint= ((rightPoint+leftPoint)/2);
+      midPoint = ((rightPoint+leftPoint)/2);
       
-      // FIR Filter ///////////////////////////////
-      // -- account for sudden turns in track
-      // -- 5th order filter
-      midPoint = (midPoint + history[memorySize-1] + history[memorySize-2] + history[memorySize-3]
-                   + history[memorySize-4] + history[memorySize-5]) / 6;
-      
-      for(i = 1; i < memorySize; i++) {
-              history[i - 1] = history[i];
-      }
-      
-      history[memorySize - 1] = midPoint;
-        
-//          Serial.write ((byte)0);  // cast 0 to byte type variable, use as STARTING PT 
-//         for (i = 0; i < NPIXELS; i++) {
-//           if (Pixel[i] == 0)
-//             Serial.write ((byte)1);  // change 0s to 1s so not confused w/ STARTING PT
-//           else
-//             Serial.write ((byte)Pixel[i]);  // writes bytes to serial port
-//         } 
 
-    
-      
-          
-    ///// CONTROL STEERING ////////////////////////////////////////// 
+//////////// ------ CONTROL STEERING --------//////////////////////////////////// 
     //Algorithm: Car ONLY turns with respect to brighest pixel
     
           if (midPoint < 61) {
-              turnAngle = map(maxi, 0, 60, 44, 70); //Car turns left 
+              turnAngle = map(midPoint, 0, 60, 44, 70); //Car turns left 
               natServo.write(turnAngle);
           }
           else if (midPoint > 67) {    //Car turns right 
-              turnAngle = map(maxi, 68, 127, 72, 98);
+              turnAngle = map(midPoint, 68, 127, 72, 98);
               natServo.write(turnAngle);
           }
           else {
@@ -199,8 +168,7 @@ void loop (void)
           }
 
 
-
-    ///// CONTROL MOTOR SPEED/////////////////////////////////////////
+/////////// ------ CONTROL MOTOR SPEED ------- //////////////////////////////////
     //Algorithm: Car Speed is CONSTANT  
     
               motorPWM = 12; //Duty Cycle Percentage 

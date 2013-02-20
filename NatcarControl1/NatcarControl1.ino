@@ -100,13 +100,11 @@ void loop (void)
            {
                  turnLeft = map(maxi, 0, 59, 44, 70);
                  natServo.write(turnLeft);
-                 //natServo.write(hardLeft);
            }
            else if (maxi < 61)  
            {
                  turnRight = map(maxi, 68, 127, 72, 98); 
                  natServo.write(turnRight);
-                 natServo.write(hardRight);
            }
            else
            {

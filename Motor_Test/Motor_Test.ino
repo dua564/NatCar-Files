@@ -13,5 +13,5 @@ void loop()
         motorPWM = 10;
      //   motorSpeed = map(motorPWM, 0, 100, 0, 255);
            
-        analogWrite(MOTORpin, 10);
+        analogWrite(MOTORpin, 20);
 }

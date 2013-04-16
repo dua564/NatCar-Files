@@ -15,7 +15,7 @@ int turnend = 98;
 
 void setup() 
 { 
-  myservo.attach(9);  // attaches the servo on pin 9 to the servo object
+  myservo.attach(10);  // attaches the servo on pin 9 to the servo object
   Serial.begin(9600); 
 } 
  

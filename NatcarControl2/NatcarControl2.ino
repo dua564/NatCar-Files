@@ -5,16 +5,16 @@
 
 // Line Camera
 #define AOpin A0  // Collect data from Linecam
-#define CLKpin 2  // Ctrl Linecam CLOCK
-#define SIpin 4   // Ctrl Linecam
+#define CLKpin 3  // Ctrl Linecam CLOCK
+#define SIpin 5   // Ctrl Linecam
 
 // Motor Controller 
-#define MOTORpin 6  // output PWN to ctrl speed
-#define STOPpin 7    // output to ctrl fast stop switch
+#define MOTORpin 7  // output PWN to ctrl speed
+#define STOPpin 9    // output to ctrl fast stop switch
 
 // Servo
 #include <Servo.h> 
-#define SERVOpin 9   //output to control servo 
+#define SERVOpin 10   //output to control servo 
 Servo natServo;
 
 ////////////////////////////////////////////////////////////////////////
@@ -22,7 +22,7 @@ const int NPIXELS = 128;
 const int memorySize = 5;
 
 const byte BLACK=0;
-const byte WHITE=1;
+const byte WHITE=100;
 
 const int straight = 71;
 const int hardLeft = 98;
@@ -70,6 +70,8 @@ int turnAngle = 71;
 int onLine = 0;
 byte MinValueActual = 255;
 byte MaxValueActual = 0;
+
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void loop (void)
@@ -92,22 +94,11 @@ void loop (void)
             digitalWrite (CLKpin, HIGH);
           }
         delayMicroseconds (1);
-    
-   Serial.write ((byte)0);  // cast 0 to byte type variable, use as STARTING PT 
-   for (i = 0; i < NPIXELS; i++) {
-     if (Pixel[i] == 0)
-       Serial.write ((byte)1);  // change 0s to 1s so not confused w/ STARTING PT
-     else
-       Serial.write ((byte)Pixel[i]);  // writes bytes to serial port
-   }
         
 /////////////////////--------------Threshold Algorithm----------- v0.1       
-             
-//      MinValueActual = Pixel[0], MaxValueActual = Pixel[0]; //set max & min to some value              
-        
-      // Find the range of pixel values we are working with in the image
-      
-  /*
+       
+// Find the range of pixel values we are working with in the image  
+/*
        for (i = 0; i < NPIXELS; i++) 
        {
          pixVal=Pixel[i];
@@ -125,10 +116,10 @@ void loop (void)
        Serial.print("Min=");
        Serial.print(     MinValueActual  );
        Serial.println("");
-   */
+*/
    
        // Determine which pixels are BLACK and which are WHITE.
-      byte Threshold = 130;
+      byte Threshold = 80;
       for (i = 0; i < NPIXELS; i++) { 
         pixVal=Pixel[i];
         if (pixVal < Threshold)
@@ -150,8 +141,31 @@ void loop (void)
         }
       }  
       midPoint = ((rightPoint+leftPoint)/2);
-      
 
+      Serial.write ((byte)0);  // cast 0 to byte type variable, use as STARTING PT 
+       for (i = 0; i < NPIXELS; i++) {
+           if (Pixel[i] == 0)
+               Serial.write ((byte)1);  // change 0s to 1s so not confused w/ STARTING PT
+           else
+               Serial.write ((byte)Pixel[i]);  // writes bytes to serial port
+       }
+
+//     ///// HISTORY ///////////////////////
+//        // try to account for sharp turns
+//        // averages out midpoint if the turn is too sharp (change moving average to adj. response)
+//        // ----- need to work on if the car goes off track     
+//        
+//        if(  ((history[memorySize-1] - maxi) < sharpTurnTolearnce)) || ((history[memorySize-1] - maxi) > (255 - sharpTurnTolearnce)))  {
+//                                                                        // compare these because neg # stored as:   max byte - neg number
+//            for(i = 1; i < memorySize; i++)    
+//                history[i - 1] = history[i];    // shift history to the left
+//            
+//            history[memorySize - 1] = maxi;
+//        }
+//        else    // there is a sharpTurn so average going in the same direction
+//            maxi = (maxi + history[memorySize - 1] + history[memorySize - 2]) / 3;
+
+            
 //////////// ------ CONTROL STEERING --------//////////////////////////////////// 
     //Algorithm: Car ONLY turns with respect to brighest pixel
     
@@ -171,7 +185,7 @@ void loop (void)
 /////////// ------ CONTROL MOTOR SPEED ------- //////////////////////////////////
     //Algorithm: Car Speed is CONSTANT  
     
-              motorPWM = 12; //Duty Cycle Percentage 
+              motorPWM = 8; //Duty Cycle Percentage 
               motorSpeed = map(motorPWM, 0, 100, 0, 255);
               analogWrite(MOTORpin, motorSpeed);
  
